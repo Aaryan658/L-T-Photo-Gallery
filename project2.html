@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Gallery | Modern Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Playfair Display for headings, Inter for body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Feather Icons for UI -->
+    <script src="https://unpkg.com/feather-icons"></script>
+
+    <style>
+        /* --- Custom Properties for Theming --- */
+        :root {
+            --background-start: #fdfcfa;
+            --background-end: #f5f5f4;
+            --text-primary: #1c1917;
+            --text-secondary: #57534e;
+            --accent-color: #a855f7; /* Purple */
+        }
+
+        /* --- Base & Typography --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--background-start), var(--background-end));
+            color: var(--text-primary);
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* --- Gallery Item Styling --- */
+        .gallery-item-container {
+            break-inside: avoid; /* Prevents items from breaking across columns */
+            padding-bottom: 1.5rem; /* Space between items vertically */
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem; /* Slightly larger radius */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .gallery-item img {
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .gallery-item:hover {
+            box-shadow: 0 14px 28px rgba(0,0,0,0.15), 0 10px 10px rgba(0,0,0,0.12);
+            transform: translateY(-5px);
+        }
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+        .gallery-item .overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 1.25rem;
+        }
+        .gallery-item:hover .overlay {
+            opacity: 1;
+        }
+        .overlay-content {
+            transform: translateY(20px);
+            transition: transform 0.4s ease;
+        }
+        .gallery-item:hover .overlay-content {
+            transform: translateY(0);
+        }
+
+        /* --- Modal Styling --- */
+        #imageModal.hidden { display: none; }
+        .modal-container {
+            backdrop-filter: blur(8px);
+            background-color: rgba(28, 25, 23, 0.8);
+            animation: bgFadeIn 0.3s ease-out;
+        }
+        .modal-content-wrapper {
+            animation: modalSlideIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+        .modal-nav-button {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .modal-nav-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* --- Keyframe Animations --- */
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bgFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(50px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+        <header class="text-center mb-12 md:mb-16">
+            <h1 class="text-5xl md:text-7xl font-bold text-stone-900">Captured Moments</h1>
+            <p class="mt-4 text-lg text-stone-600 max-w-2xl mx-auto">Explore a curated collection of scenes from around the world, each with its own story.</p>
+        </header>
+        
+        <!-- Masonry Grid -->
+        <div id="photo-gallery" class="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6">
+            <!-- Images dynamically injected here -->
+        </div>
+    </div>
+
+    <!-- Modal (Lightbox) -->
+    <div id="imageModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="modal-container absolute inset-0"></div>
+
+        <!-- Content -->
+        <div class="modal-content-wrapper relative w-full h-full flex flex-col items-center justify-center">
+            
+            <!-- Close Button -->
+            <button id="closeModal" class="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-20">
+                <i data-feather="x" class="w-8 h-8"></i>
+            </button>
+            
+            <!-- Navigation -->
+            <button id="prevBtn" class="modal-nav-button absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-white z-20">
+                <i data-feather="arrow-left" class="w-6 h-6"></i>
+            </button>
+            <button id="nextBtn" class="modal-nav-button absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-white z-20">
+                <i data-feather="arrow-right" class="w-6 h-6"></i>
+            </button>
+            
+            <!-- Image and Caption -->
+            <div class="relative flex flex-col items-center justify-center max-w-6xl max-h-[90%] w-full">
+                <img src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl" id="modalImage" alt="Enlarged gallery image">
+                <div class="text-center mt-4 px-4">
+                    <h3 id="modalCaption" class="text-xl font-bold text-white"></h3>
+                    <p id="modalSubCaption" class="text-base text-gray-300"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DOM Elements ---
+            const gallery = document.getElementById('photo-gallery');
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalCaption = document.getElementById('modalCaption');
+            const modalSubCaption = document.getElementById('modalSubCaption');
+            const closeModalBtn = document.getElementById('closeModal');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            // --- State ---
+            let imagesData = [];
+            let currentIndex = 0;
+
+            // --- Image Data ---
+            const imageData = [
+                { id: 29, title: "Morning Dew", location: "Forest Valley" },
+                { id: 33, title: "Urban Exploration", location: "Downtown City" },
+                { id: 42, title: "Coastal Serenity", location: "Ocean Cliffs" },
+                { id: 48, title: "Mountain Majesty", location: "Alpine Peaks" },
+                { id: 56, title: "Desert Sands", location: "Arid Expanse" },
+                { id: 58, title: "Lakeside Reflection", location: "Mirror Lake" },
+                { id: 75, title: "Autumn Path", location: "Golden Woods" },
+                { id: 88, title: "Winter's Embrace", location: "Snowy Highlands" },
+                { id: 96, title: "City Lights", location: "Metropolis at Night" },
+                { id: 103, title: "Rural Charm", location: "Countryside Farm" },
+                { id: 111, title: "Architectural Lines", location: "Modern Museum" },
+                { id: 119, title: "Ocean's Fury", location: "Stormy Seas" }
+            ];
+
+            // --- Populate Gallery ---
+            function populateGallery() {
+                imageData.forEach((data, index) => {
+                    const thumbnailUrl = `https://picsum.photos/id/${data.id}/500/${Math.floor(300 + Math.random() * 200)}`; // Random height for masonry
+                    const largeUrl = `https://picsum.photos/id/${data.id}/1600/1200`;
+                    
+                    imagesData.push({ ...data, largeUrl });
+
+                    const galleryItemContainer = document.createElement('div');
+                    galleryItemContainer.className = 'gallery-item-container';
+                    galleryItemContainer.style.animationDelay = `${index * 50}ms`;
+
+                    galleryItemContainer.innerHTML = `
+                        <a href="#" class="gallery-item block" data-index="${index}">
+                            <img src="${thumbnailUrl}" alt="${data.title}" class="w-full h-auto object-cover" onerror="this.onerror=null; this.src='https://placehold.co/500x400/e2e8f0/4a5568?text=Image+Error';">
+                            <div class="overlay">
+                                <div class="overlay-content">
+                                    <h3 class="font-bold text-lg text-white">${data.title}</h3>
+                                    <p class="text-sm text-gray-300">${data.location}</p>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                    gallery.appendChild(galleryItemContainer);
+                });
+            }
+
+            // --- Modal Logic ---
+            const updateModalContent = (index) => {
+                const imageData = imagesData[index];
+                // Preload image
+                const img = new Image();
+                img.src = imageData.largeUrl;
+                img.onload = () => {
+                    modalImage.src = imageData.largeUrl;
+                }
+                modalImage.alt = imageData.title;
+                modalCaption.textContent = imageData.title;
+                modalSubCaption.textContent = imageData.location;
+                currentIndex = index;
+            };
+
+            const openModal = (index) => {
+                updateModalContent(index);
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            };
+
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            };
+
+            const showNextImage = () => {
+                const nextIndex = (currentIndex + 1) % imagesData.length;
+                updateModalContent(nextIndex);
+            };
+
+            const showPrevImage = () => {
+                const prevIndex = (currentIndex - 1 + imagesData.length) % imagesData.length;
+                updateModalContent(prevIndex);
+            };
+
+            // --- Event Listeners ---
+            gallery.addEventListener('click', function(e) {
+                e.preventDefault();
+                const link = e.target.closest('.gallery-item');
+                if (link) {
+                    const index = parseInt(link.dataset.index, 10);
+                    openModal(index);
+                }
+            });
+
+            closeModalBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', function(e) {
+                // Close if clicking on the blurred background
+                if (e.target.classList.contains('modal-container')) {
+                    closeModal();
+                }
+            });
+            nextBtn.addEventListener('click', showNextImage);
+            prevBtn.addEventListener('click', showPrevImage);
+
+            document.addEventListener('keydown', function(e) {
+                if (modal.classList.contains('hidden')) return;
+                if (e.key === 'Escape') closeModal();
+                if (e.key === 'ArrowRight') showNextImage();
+                if (e.key === 'ArrowLeft') showPrevImage();
+            });
+
+            // --- Initialization ---
+            populateGallery();
+            feather.replace(); // Initialize Feather Icons
+        });
+    </script>
+</body>
+</html>
